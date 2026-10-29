@@ -1,0 +1,8 @@
+<Solution>
+  <Project Path="thuctap.client/thuctap.client.esproj">
+    <Build />
+    <Deploy />
+  </Project>
+  <Project Path="ThucTap.Server.Tests/ThucTap.Server.Tests.csproj" />
+  <Project Path="ThucTap.Server/ThucTap.Server.csproj" />
+</Solution>

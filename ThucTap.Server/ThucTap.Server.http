@@ -1,0 +1,18 @@
+@ThucTap.Server_HostAddress = http://localhost:5125
+
+### List products
+GET {{ThucTap.Server_HostAddress}}/api/products
+Accept: application/json
+
+### Search products
+GET {{ThucTap.Server_HostAddress}}/api/products?search=gia%20dung
+Accept: application/json
+
+### Get product details, including reviews
+GET {{ThucTap.Server_HostAddress}}/api/products/coffee-dripper
+Accept: application/json
+
+### Unknown product returns 404
+GET {{ThucTap.Server_HostAddress}}/api/products/not-found
+Accept: application/json
+

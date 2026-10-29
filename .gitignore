@@ -1,0 +1,11 @@
+/ThucTap.Server/appsettings.Development.json
+**/bin/
+**/obj/
+**/node_modules/
+**/dist/
+/artifacts/
+/.vs/
+/.idea/
+/.freebuff/
+/.qa-vietnamese/
+*.user
