@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import ProductCard from './Product';
 import type { ProductSummary } from './types';
 
@@ -18,4 +19,4 @@ function ProductList({ products, onViewDetail }: ProductListProps) {
   );
 }
 
-export default ProductList;
+export default memo(ProductList);

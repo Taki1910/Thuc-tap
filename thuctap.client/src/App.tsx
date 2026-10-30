@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
 import { addReview, createProduct, deleteProduct, getProduct, getProducts, updateProduct } from './api';
 import type { Product, ProductInput, ProductSummary } from './types';
 import ProductForm from './ProductForm';
@@ -9,12 +9,13 @@ const currency = new Intl.NumberFormat('vi-VN', { style: 'currency', currency: '
 
 function App() {
   const [products, setProducts] = useState<ProductSummary[]>([]);
+  const [hasLoadedProducts, setHasLoadedProducts] = useState(false);
   const [search, setSearch] = useState('');
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [isProductMenuOpen, setIsProductMenuOpen] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const [isLoadingDetail, setIsLoadingDetail] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -31,16 +32,25 @@ function App() {
 
   useEffect(() => {
     const controller = new AbortController();
+    let loadingTimeout: number | undefined;
     currentSearch.current = search;
-    getProducts(search, controller.signal)
-      .then((items) => {
-        if (!controller.signal.aborted) { setProducts(items); setError(null); }
-      })
-      .catch((cause: unknown) => {
-        if (!controller.signal.aborted) setError(cause instanceof Error ? cause.message : 'Đã xảy ra lỗi khi tải sản phẩm.');
-      })
-      .finally(() => { if (!controller.signal.aborted) setIsLoading(false); });
-    return () => controller.abort();
+    const timeout = window.setTimeout(() => {
+      loadingTimeout = window.setTimeout(() => {
+        if (!controller.signal.aborted && currentSearch.current === search) setIsLoading(true);
+      }, 600);
+      getProducts(search, controller.signal)
+        .then((items) => {
+          if (!controller.signal.aborted && currentSearch.current === search) { setProducts(items); setHasLoadedProducts(true); setError(null); }
+        })
+        .catch((cause: unknown) => {
+          if (!controller.signal.aborted && currentSearch.current === search) setError(cause instanceof Error ? cause.message : 'Đã xảy ra lỗi khi tải sản phẩm.');
+        })
+        .finally(() => {
+          window.clearTimeout(loadingTimeout);
+          if (!controller.signal.aborted && currentSearch.current === search) setIsLoading(false);
+        });
+    }, 350);
+    return () => { window.clearTimeout(timeout); window.clearTimeout(loadingTimeout); controller.abort(); };
   }, [search]);
 
   async function refreshProducts() {
@@ -57,7 +67,7 @@ function App() {
     }
   }
 
-  async function openProduct(productId: string) {
+  const openProduct = useCallback(async (productId: string) => {
     if (mutationInFlight.current) return;
     setIsProductMenuOpen(false);
     detailRequest.current?.abort();
@@ -78,7 +88,7 @@ function App() {
     } finally {
       if (!controller.signal.aborted && detailGeneration.current === generation) setIsLoadingDetail(false);
     }
-  }
+  }, []);
 
   function closeProductDetail() {
     setIsProductMenuOpen(false);
@@ -175,7 +185,8 @@ function App() {
         <div className="search-box">
           <span aria-hidden="true">⌕</span>
           <label className="visually-hidden" htmlFor="product-search">Tìm kiếm sản phẩm</label>
-          <input id="product-search" type="search" placeholder="Bạn đang tìm món gì?" value={search} onChange={(event) => { setIsLoading(true); setError(null); setSearch(event.target.value); }} />
+          <input id="product-search" type="search" placeholder="Bạn đang tìm món gì?" value={search} onChange={(event) => { currentSearch.current = event.target.value; setIsLoading(false); setError(null); setSearch(event.target.value); }} />
+          {isLoading ? <span className="search-loading" role="status">Đang tìm…</span> : null}
           <kbd>/</kbd>
         </div>
       </section>
@@ -184,9 +195,8 @@ function App() {
           <div><p className="eyebrow">BỘ SƯU TẬP NHỎ</p><h2 id="catalog-title">Sản phẩm nổi bật</h2></div>
           <div className="catalog-actions"><p className="section-heading__count">{products.length} sản phẩm</p><button className="button button--solid" type="button" disabled={isSaving} onClick={() => { setSelectedProduct(null); setIsEditing(false); setIsCreating(true); setDetailError(null); }}>+ Thêm sản phẩm</button></div>
         </div>
-        {isLoading ? <p className="status-message" role="status">Đang tải sản phẩm…</p> : null}
         {error ? <p className="status-message status-message--error" role="alert">{error}</p> : null}
-        {!isLoading && !error ? <ProductList products={products} onViewDetail={openProduct} /> : null}
+        {hasLoadedProducts ? <ProductList products={products} onViewDetail={openProduct} /> : null}
       </section>
       <footer className="site-footer">
         <span className="brand__mark" aria-hidden="true">m.</span><p>Mua ít hơn. Chọn điều tốt hơn.</p><span>© 2026 Mộc Market</span>
